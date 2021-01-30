@@ -9,6 +9,7 @@ fileData = readFile(file);
 ecgData = table2array(fileData(:,1));
 timeMs = (1:length(ecgData))';
 
+%%%% Question 1 
 % plot the data and set annotations for the locations
 plot(timeMs, ecgData);
 xlabel('Time(ms)');
@@ -29,6 +30,7 @@ ylabel('ECG(mV)');
 title('Fig. 2: Electrocardiogram Analysis zoomed in')
 grid on;
 
+%%%% Question 2
 % As per the instructions in the assignment
 % Simple code for implementing without using inbuilt funtions
 
@@ -40,17 +42,27 @@ peak(1) = 0;
 trough(1) = 0;
 
 %minProminence will set the sensitivity of the peak detection
-minProminence = 300;
+minProminence = 400;
+
+%minPeakDistance will select peaks if they are seperated by this variable
+minPeakDistance = 450;
+
+j = 1;
 
 for i = 2:length(ecgData)-1
     % detect a peak using the below code
-    if ((ecgData(i - 1) < ecgData(i)) && (ecgData(i) > ecgData(i + 1)))...
-            && (ecgData(i) > 0)
+    if ((ecgData(i - 1) < ecgData(i)) && (ecgData(i) > ecgData(i + 1))) &&...
+            (ecgData(i) > 0)
         peak = [peak; ecgData(i)];
         
         % check the prominence of the peak with the last known trough
-        if (peak(end) - trough(end)) > minProminence
+        if (peak(end) - trough(end)) > minProminence && (j == 1)
             heartBeats = [heartBeats; {ecgData(i),i}];   
+            j = j + 1;
+        elseif (peak(end) - trough(end)) > minProminence &&...
+                ((timeMs(i) - cell2mat(heartBeats(j-1,2))) > minPeakDistance)
+            heartBeats = [heartBeats; {ecgData(i),i}];   
+            j = j + 1;
         end
         
         % detect the trough, needed for confirming prominence
@@ -62,10 +74,11 @@ end
 % converting the cell to matrix
 heartBeats = cell2mat(heartBeats);
 
-% To make my future self life easier i'll be using functions in the signal
-%processing toolbox
-% [heartBeats, locaions] = findpeaks(ecgData,"MinPeakProminence",300);
-% heartBeats = [heartBeats, locations];                                    
+% To make my future self life easier i'll be using functions in the signal...
+% processing toolbox
+%   [heartBeats, locations] = findpeaks(ecgData,"MinPeakProminence",400,...
+%       "MinPeakDistance",450);
+%   heartBeats = [heartBeats, locations];
 
 % Write the heart beat data to a file in the 
 writetable(array2table([heartBeats(:,2)/1000, heartBeats(:,1)],...
@@ -77,5 +90,46 @@ plot(timeMs, ecgData, timeMs(heartBeats(:,2)), heartBeats(:,1), 'or');
 xlabel('Time(ms)');
 ylabel('ECG(mV)');
 title('Fig. 3: ECG Data with Peaks highlighted')
+legend('ECG signal','Peaks/Heart beats')
 grid on
+
+
+%%%% Question 3
+% As per the instructions in the assignment
+% Simple code for implementing without using inbuilt funtions
+
+heartRate = {};
+
+for i = [2:length(heartBeats(:,2))]
+    heartRate = [heartRate; {60 / ((heartBeats(i,2) - heartBeats(i-1,2))...
+            / 1000), heartBeats(i,2)}];        
+end
+
+heartRate = cell2mat(heartRate);
+
+% implementation using built in funtions
+%  heartRate2 = diff(heartBeats(:,2));
+%  heartRate2 = [60./(heartRate2/1000), heartBeats(2:end,2)];
+
+subplot(4,1,1)
+plot(timeMs, ecgData);
+xlabel('Time(ms)');
+ylabel('ECG(mV)');
+title('Fig. 4: ECG Data and Heart rate in two time scales')
+
+subplot(4,1,2)
+plot(timeMs(1:30000), ecgData(1:30000));
+xlabel('Time(ms)');
+ylabel('ECG(mV)');
+
+subplot(4,1,3)
+plot(heartRate(:,2), heartRate(:,1));
+xlabel('Time(ms)');
+ylabel({'Heart rate','(beats per minute)'});
+
+subplot(4,1,4)
+plot(heartRate((heartRate(:,2)<30000),2), heartRate(1:length(heartRate((heartRate(:,2)<30000),2)),1));
+xlabel('Time(ms)');
+ylabel({'Heart rate','(beats per minute)'});
+
 
